@@ -14,10 +14,16 @@ from slackbot.dispatcher import MessageDispatcher
 
 logger = logging.getLogger(__name__)
 
-
 class Bot(object):
     def __init__(self, settings=Settings()):
         self.settings = settings
+        self._plugins = PluginsManager.get_instance(self.settings)
+
+        if hasattr(self.settings, 'API_TOKEN'):
+            self.connect()
+    
+
+    def connect(self):
         self._client = SlackClient(
             settings.API_TOKEN,
             bot_icon=settings.BOT_ICON if hasattr(settings,
@@ -25,7 +31,6 @@ class Bot(object):
             bot_emoji=settings.BOT_EMOJI if hasattr(settings,
                                                     'BOT_EMOJI') else None
         )
-        self._plugins = PluginsManager.get_instance(self.settings)
         self._dispatcher = MessageDispatcher(self._client, self._plugins,
                                              settings.ERRORS_TO)
 
