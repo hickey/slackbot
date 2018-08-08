@@ -10,17 +10,17 @@ from functools import wraps
 import six
 from slackbot.manager import PluginsManager
 from slackbot.utils import WorkerPool
-from slackbot import settings
 
 logger = logging.getLogger(__name__)
 
 
 class MessageDispatcher(object):
-    def __init__(self, slackclient, plugins, errors_to):
+    def __init__(self, slackclient, settings):
         self._client = slackclient
         self._pool = WorkerPool(self.dispatch_msg)
-        self._plugins = plugins
-        self._errors_to = None
+        self._plugins = PluginsManager.get_instance()
+        self._errors_to = settings.errors_to()
+        self._default_reply = settings.default_reply()
         if errors_to:
             self._errors_to = self._client.find_channel_by_name(errors_to)
             if not self._errors_to:
@@ -29,9 +29,9 @@ class MessageDispatcher(object):
                         errors_to))
 
         alias_regex = ''
-        if getattr(settings, 'ALIASES', None):
-            logger.info('using aliases %s', settings.ALIASES)
-            alias_regex = '|(?P<alias>{})'.format('|'.join([re.escape(s) for s in settings.ALIASES.split(',')]))
+        if settings.aliases():
+            logger.info('using aliases %s', settings.aliases())
+            alias_regex = '|(?P<alias>{})'.format('|'.join([re.escape(s) for s in settings.aliases().split(',')]))
 
         self.AT_MESSAGE_MATCHER = re.compile(r'^(?:\<@(?P<atuser>\w+)\>:?|(?P<username>\w+):{}) ?(?P<text>[\s\S]*)$'.format(alias_regex))
 
@@ -152,7 +152,7 @@ class MessageDispatcher(object):
             time.sleep(1)
 
     def _default_reply(self, msg):
-        default_reply = settings.DEFAULT_REPLY
+        default_reply = self._default_reply
         if default_reply is None:
             default_reply = [
                 u'Bad command "{}", You can ask me one of the following '
@@ -189,7 +189,7 @@ class Message(object):
     def __init__(self, slackclient, body):
         self._client = slackclient
         self._body = body
-        self._plugins = PluginsManager()
+        self._plugins = PluginsManager.get_instance()
 
     def _get_user_id(self):
         if 'user' in self._body:

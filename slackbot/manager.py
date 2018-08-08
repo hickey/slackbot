@@ -5,15 +5,38 @@ import logging
 from glob import glob
 from six import PY2
 from importlib import import_module
-from slackbot import settings
 from slackbot.utils import to_utf8
 
 logger = logging.getLogger(__name__)
 
 
 class PluginsManager(object):
-    def __init__(self):
-        pass
+    __instance = None
+
+    def __init__(self, settings):
+        ''' PluginManager singleton constructor.
+            This method should only execute once and not be called directly.
+            All calls to make a connection to the PluginManager should use
+            PluginManager.get_instance().'''
+        if Plugins.__instance != None:
+            raise "Plugins is a Singleton, but was reinitialized"
+        else:
+            self.settings = settings
+            PluginManager.__instance = self
+
+    @staticmethod
+    def get_instance(settings=None):
+        ''' get_instance(settings=None): (singleton reference)
+            The get_instance() method is the way to get a reference to the
+            singleton reference of PluginManager. The first call to
+            get_instance() needs to send a reference to the Settings
+            instance. All calls afterward do not need to call with the
+            Settings instance.'''
+        if PluginsManager.__instance == None:
+            if settings == None:
+                raise "PluginsManager requires a Settings object on first invocation"
+            PluginsManager(settings)
+        return PluginsManager.__instance
 
     commands = {
         'respond_to': {},
@@ -21,9 +44,10 @@ class PluginsManager(object):
         'default_reply': {}
     }
 
+    # Shouldn't init_plugins() be called when __init__() is fired?
     def init_plugins(self):
-        if hasattr(settings, 'PLUGINS'):
-            plugins = settings.PLUGINS
+        if hasattr(self.settings, 'PLUGINS'):
+            plugins = self.settings.PLUGINS
         else:
             plugins = 'slackbot.plugins'
 

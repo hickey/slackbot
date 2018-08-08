@@ -7,7 +7,7 @@ import re
 import time
 from glob import glob
 from six.moves import _thread
-from slackbot import settings
+from slackbot.settings import Settings
 from slackbot.manager import PluginsManager
 from slackbot.slackclient import SlackClient
 from slackbot.dispatcher import MessageDispatcher
@@ -16,7 +16,8 @@ logger = logging.getLogger(__name__)
 
 
 class Bot(object):
-    def __init__(self):
+    def __init__(self, settings=Settings()):
+        self.settings = settings
         self._client = SlackClient(
             settings.API_TOKEN,
             bot_icon=settings.BOT_ICON if hasattr(settings,
@@ -24,16 +25,18 @@ class Bot(object):
             bot_emoji=settings.BOT_EMOJI if hasattr(settings,
                                                     'BOT_EMOJI') else None
         )
-        self._plugins = PluginsManager()
+        self._plugins = PluginsManager.get_instance(self.settings)
         self._dispatcher = MessageDispatcher(self._client, self._plugins,
                                              settings.ERRORS_TO)
 
     def run(self):
+        # should the plugins be initizlized automatically when the
+        # PluginsManager is initialized?
         self._plugins.init_plugins()
         self._dispatcher.start()
-        if not self._client.connected: 
+        if not self._client.connected:
             self._client.rtm_connect()
-            
+
         _thread.start_new_thread(self._keepactive, tuple())
         logger.info('connected to slack RTM api')
         self._dispatcher.loop()
